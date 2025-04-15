@@ -1,6 +1,6 @@
 # WhatsApp Desktop para Linux
 
-**Versión 1.0.0**
+**Versión 1.0.1**
 
 Esta es una aplicación de escritorio desarrollada utilizando **Electron**, que permite a los usuarios interactuar con **WhatsApp** de manera independiente del navegador, con soporte para llamadas y videollamadas. El objetivo de este proyecto es proporcionar una experiencia de usuario equivalente a la aplicación oficial de WhatsApp para Windows/Mac, pero en sistemas Linux.
 
@@ -12,6 +12,7 @@ Esta es una aplicación de escritorio desarrollada utilizando **Electron**, que 
 - **Permisos multimedia**: Configuración completa para acceder a cámara, micrófono y notificaciones.
 - **Menú contextual personalizado**: Opciones como cortar, copiar, pegar, recargar, imprimir y herramientas de desarrollo.
 - **Optimizado para Linux**: Creado específicamente para funcionar en distribuciones basadas en Debian.
+- **Incorpora Tray icon**: Incorpora el icono de Whatsapp en el tray, asi si cerramos la ventana de prioncipal, podemos seguir accediendo mediante el icono en el tray.
 
 ## Tecnologías utilizadas
 

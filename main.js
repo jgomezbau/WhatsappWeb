@@ -1,47 +1,56 @@
-const { app, BrowserWindow, Menu, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, session, shell, Tray, nativeImage } = require('electron');
 const path = require('path');
 
-// No desactivamos aceleración por hardware para permitir mejor rendimiento en videollamadas
-// app.disableHardwareAcceleration();
-
 let mainWindow;
+let tray;
 
-// User agent de Chrome actual para evitar detección
 const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const WHATSAPP_URL = 'https://web.whatsapp.com';
+
+function createTray() {
+    if (tray) return;
+    const iconPath = path.join(__dirname, 'icons', 'icon.png');
+    tray = new Tray(nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 }));
+    tray.setToolTip('WhatsApp Desktop');
+    tray.setContextMenu(Menu.buildFromTemplate([
+        { label: 'Mostrar WhatsApp', click: () => mainWindow?.show() },
+        { label: 'Salir', click: () => { app.isQuiting = true; app.quit(); } }
+    ]));
+    tray.on('click', () => mainWindow?.show());
+}
 
 function createWindow() {
-    // Configuramos la ventana principal con soporte para características multimedia
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
+        icon: path.join(__dirname, 'icons', 'icon.png'),
+        show: false,
         webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true,
             devTools: true,
-            webSecurity: true,
+            webSecurity: false, // Cambia a false para pruebas
             allowRunningInsecureContent: false,
-            webgl: true,
-            webaudio: true,
-            preload: path.join(__dirname, 'preload.js')
-        },
-        icon: path.join(__dirname, 'icons', 'icon.png'),
-        show: false // Mostraremos la ventana una vez esté cargada
+            sandbox: false // Añadido para evitar problemas de sandbox
+        }
     });
 
-    // Establecemos un user agent de Chrome para evitar detección
+    // User-Agent spoofing
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
         details.requestHeaders['User-Agent'] = USER_AGENT;
         callback({ requestHeaders: details.requestHeaders });
     });
 
-    // Dominios permitidos de WhatsApp
-    const allowedDomains = ['web.whatsapp.com'];
-    const allowedLoginDomains = [/whatsapp\.com$/];
+    // Permisos mínimos necesarios
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowed = ['media', 'microphone', 'camera', 'fullscreen'];
+        callback(allowed.includes(permission));
+    });
 
-    // Gestionar apertura de ventanas
+    // Solo permitir navegación dentro de WhatsApp
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        const hostname = new URL(url).hostname;
-        if (allowedLoginDomains.some(domain => domain instanceof RegExp ? domain.test(hostname) : hostname.includes(domain))) {
+        if (url.startsWith(WHATSAPP_URL)) {
             mainWindow.loadURL(url);
         } else {
             shell.openExternal(url);
@@ -49,86 +58,65 @@ function createWindow() {
         return { action: 'deny' };
     });
 
-    // Gestionar navegación
     mainWindow.webContents.on('will-navigate', (event, url) => {
-        const hostname = new URL(url).hostname;
-        if (!allowedLoginDomains.some(domain => domain instanceof RegExp ? domain.test(hostname) : hostname.includes(domain))) {
+        if (!url.startsWith(WHATSAPP_URL)) {
+            event.preventDefault();
             shell.openExternal(url);
         }
     });
-    
-    // Cargar WhatsApp Web
-    mainWindow.loadURL('https://web.whatsapp.com');
-    mainWindow.setMenu(null);
 
-    // Mostrar la ventana cuando esté lista
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-    });
-
-    // Configurar los permisos para multimedia (cruciales para videollamadas)
-    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowedPermissions = [
-            'media', 
-            'mediaKeySystem',
-            'geolocation',
-            'notifications',
-            'fullscreen',
-            'clipboard-read',
-            'clipboard-write'
-        ];
-        callback(allowedPermissions.includes(permission));
-    });
-
-    // Actualizar menú contextual para incluir "Inspeccionar"
-    const contextMenuTemplate = [
-        { label: 'Cortar', role: 'cut', enabled: false },
-        { label: 'Copiar', role: 'copy', enabled: false },
-        { label: 'Pegar', role: 'paste' },
-        { label: 'Seleccionar todo', role: 'selectAll' },
-        { type: 'separator' },
-        { label: 'Recargar', click: () => { mainWindow.reload(); } },
-        { label: 'Imprimir', click: () => { mainWindow.webContents.print(); } },
-        { label: 'Inspeccionar', click: (_, params) => { mainWindow.webContents.inspectElement(params.x, params.y); } },
-        { type: 'separator' },
-        { label: 'Activar DevTools', click: () => { mainWindow.webContents.openDevTools(); } }
-    ];
-
-    // Agregar listener para el clic derecho (context-menu)
+    // Menú contextual simple
     mainWindow.webContents.on('context-menu', (event, params) => {
-        // Actualizar estado de opciones si fuera necesario
-        contextMenuTemplate[0].enabled = params.isEditable;
-        contextMenuTemplate[1].enabled = params.selectionText.trim() !== '';
-        contextMenuTemplate[2].enabled = params.isEditable;
-        const menu = Menu.buildFromTemplate(contextMenuTemplate);
+        const menu = Menu.buildFromTemplate([
+            { label: 'Cortar', role: 'cut', enabled: params.isEditable },
+            { label: 'Copiar', role: 'copy', enabled: params.selectionText.trim() !== '' },
+            { label: 'Pegar', role: 'paste', enabled: params.isEditable },
+            { type: 'separator' },
+            { label: 'Recargar', click: () => mainWindow.reload() },
+            { label: 'Inspeccionar', click: () => mainWindow.webContents.inspectElement(params.x, params.y) }
+        ]);
         menu.popup();
     });
 
-    // Activar las capacidades de audio y video necesarias para videollamadas
-    mainWindow.webContents.setAudioMuted(false);
-
-    // Manejar el cierre de la ventana
-    mainWindow.on('closed', () => {
-        mainWindow = null;
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error('Error al cargar:', errorCode, errorDescription, validatedURL);
+        mainWindow.loadURL('data:text/html,<h1>Error al cargar WhatsApp Web</h1><p>' + errorDescription + '</p>');
     });
+
+    mainWindow.webContents.on('crashed', () => {
+        console.error('El proceso de renderizado ha fallado');
+        mainWindow.loadURL('data:text/html,<h1>WhatsApp Web ha fallado</h1>');
+    });
+
+    mainWindow.loadURL(WHATSAPP_URL);
+    mainWindow.setMenu(null);
+
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.show();
+        createTray();
+    });
+
+    mainWindow.on('close', (event) => {
+        if (!app.isQuiting) {
+            event.preventDefault();
+            mainWindow.hide();
+        }
+    });
+
+    mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// Iniciar la aplicación cuando esté lista
-app.whenReady().then(() => {
-    // Registrar protocolos necesarios (importante para videollamadas)
-    session.defaultSession.protocol.registerHttpProtocol('wss', (request, callback) => {
-        // Necesario para manejar correctamente los protocolos seguros de WebSocket que usa WhatsApp
-    });
-    
-    createWindow();
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        // Mantener en background hasta que el usuario salga explícitamente
+    }
 });
 
-// Manejar el cierre de todas las ventanas
-app.on('window-all-closed', () => { 
-    if (process.platform !== 'darwin') app.quit(); 
-});
+app.on('before-quit', () => { app.isQuiting = true; });
 
-// Manejar la activación de la aplicación (macOS)
-app.on('activate', () => { 
-    if (mainWindow === null) createWindow(); 
+app.on('activate', () => {
+    if (!mainWindow) createWindow();
+    else mainWindow.show();
 });
