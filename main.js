@@ -1,22 +1,81 @@
 const { app, BrowserWindow, Menu, session, shell, Tray, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow;
 let tray;
 
 const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const WHATSAPP_URL = 'https://web.whatsapp.com';
+const configPath = path.join(app.getPath('userData'), 'media-config.json');
+
+// Leer configuración de multimedia
+function readMediaConfig() {
+    try {
+        return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {
+        return { agc: false, volumeLimit: false, outOfProcess: false };
+    }
+}
+
+// Guardar configuración de multimedia
+function writeMediaConfig(config) {
+    fs.writeFileSync(configPath, JSON.stringify(config));
+}
+
+// Aplicar flags de Chromium según configuración
+const mediaConfig = readMediaConfig();
+if (mediaConfig.agc) app.commandLine.appendSwitch('disable-audio-output-resampler');
+if (mediaConfig.volumeLimit) app.commandLine.appendSwitch('disable-audio-volume-limit');
+if (mediaConfig.outOfProcess) app.commandLine.appendSwitch('disable-features', 'AudioServiceOutOfProcess');
 
 function createTray() {
     if (tray) return;
     const iconPath = path.join(__dirname, 'icons', 'icon.png');
     tray = new Tray(nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 }));
-    tray.setToolTip('WhatsApp Desktop');
-    tray.setContextMenu(Menu.buildFromTemplate([
+
+    const mediaConfig = readMediaConfig();
+
+    const multimediaMenu = [
+        {
+            label: `Control automático de ganancia (AGC): ${mediaConfig.agc ? 'Deshabilitado' : 'Habilitado'}`,
+            type: 'checkbox',
+            checked: mediaConfig.agc,
+            click: () => toggleMediaOption('agc')
+        },
+        {
+            label: `Límite de volumen: ${mediaConfig.volumeLimit ? 'Deshabilitado' : 'Habilitado'}`,
+            type: 'checkbox',
+            checked: mediaConfig.volumeLimit,
+            click: () => toggleMediaOption('volumeLimit')
+        },
+        {
+            label: `AudioService OutOfProcess: ${mediaConfig.outOfProcess ? 'Deshabilitado' : 'Habilitado'}`,
+            type: 'checkbox',
+            checked: mediaConfig.outOfProcess,
+            click: () => toggleMediaOption('outOfProcess')
+        }
+    ];
+
+    const contextMenu = Menu.buildFromTemplate([
         { label: 'Mostrar WhatsApp', click: () => mainWindow?.show() },
+        { type: 'separator' },
+        { label: 'Opciones Multimedia', submenu: multimediaMenu },
+        { type: 'separator' },
         { label: 'Salir', click: () => { app.isQuiting = true; app.quit(); } }
-    ]));
+    ]);
+    tray.setToolTip('WhatsApp Desktop');
+    tray.setContextMenu(contextMenu);
     tray.on('click', () => mainWindow?.show());
+}
+
+// Cambiar opción multimedia y reiniciar la app
+function toggleMediaOption(option) {
+    const config = readMediaConfig();
+    config[option] = !config[option];
+    writeMediaConfig(config);
+    app.relaunch();
+    app.exit();
 }
 
 function createWindow() {
@@ -44,7 +103,7 @@ function createWindow() {
 
     // Permisos mínimos necesarios
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowed = ['media', 'microphone', 'camera', 'fullscreen'];
+        const allowed = ['media', 'microphone', 'camera', 'fullscreen', 'notifications']; // Añadir 'notifications' aquí
         callback(allowed.includes(permission));
     });
 
