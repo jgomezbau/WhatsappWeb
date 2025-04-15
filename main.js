@@ -176,6 +176,10 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => { app.isQuiting = true; });
 
 app.on('activate', () => {
-    if (!mainWindow) createWindow();
-    else mainWindow.show();
+    if (!mainWindow) {
+        createWindow();
+    } else {
+        mainWindow.show();
+        mainWindow.focus(); // Add this line to focus the window
+    }
 });
