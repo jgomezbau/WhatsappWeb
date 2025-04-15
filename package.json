@@ -1,0 +1,47 @@
+{
+    "name": "whatsapp-web",
+    "version": "1.0.0",
+    "description": "Aplicación de escritorio para WhatsApp con soporte para videollamadas",
+    "author": "Juan Bau <jgomezbau@gmail.com>",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder",
+        "linux": "electron-builder --linux AppImage"
+    },
+    "build": {
+        "appId": "com.whatsapp.desktop",
+        "productName": "WhatsApp Desktop",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "**/*",
+            "!node_modules/electron/**/*",
+            "!**/*.md",
+            "!.git/**/*"
+        ],
+        "linux": {
+            "target": [
+                "AppImage"
+            ],
+            "icon": "icons/icon.png",
+            "category": "Network;Chat",
+            "maintainer": "Juan Bau",
+            "vendor": "WhatsApp Desktop Unofficial",
+            "executableName": "whatsapp-desktop",
+            "synopsis": "Cliente no oficial de WhatsApp con soporte para videollamadas",
+            "artifactName": "WhatsApp-Desktop-${version}.${ext}"
+        },
+        "protocols": {
+            "name": "WhatsApp Web",
+            "schemes": [
+                "whatsapp"
+            ]
+        }
+    },
+    "devDependencies": {
+        "electron": "^28.1.0",
+        "electron-builder": "^26.0.12"
+    }
+}
