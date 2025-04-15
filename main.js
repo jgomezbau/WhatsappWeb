@@ -64,7 +64,7 @@ function createTray() {
         { type: 'separator' },
         { label: 'Salir', click: () => { app.isQuiting = true; app.quit(); } }
     ]);
-    tray.setToolTip('WhatsApp Desktop');
+    tray.setToolTip('WhatsApp');
     tray.setContextMenu(contextMenu);
     tray.on('click', () => mainWindow?.show());
 }

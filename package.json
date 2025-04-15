@@ -1,5 +1,5 @@
 {
-    "name": "Whatsapp Desktop",
+    "name": "WhatsApp",
     "version": "2.0.0",
     "description": "Aplicación de escritorio para WhatsApp con soporte para videollamadas",
     "author": "Juan Bau <jgomezbau@gmail.com>",
@@ -11,7 +11,7 @@
     },
     "build": {
         "appId": "com.whatsapp.desktop",
-        "productName": "WhatsApp Desktop",
+        "productName": "WhatsApp",
         "directories": {
             "output": "dist"
         },
@@ -34,7 +34,7 @@
             "artifactName": "WhatsApp-Desktop-${version}.${ext}"
         },
         "protocols": {
-            "name": "Whatsapp Desktop",
+            "name": "WhatsApp",
             "schemes": [
                 "whatsapp"
             ]
