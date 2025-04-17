@@ -29,6 +29,22 @@ if (mediaConfig.agc) app.commandLine.appendSwitch('disable-audio-output-resample
 if (mediaConfig.volumeLimit) app.commandLine.appendSwitch('disable-audio-volume-limit');
 if (mediaConfig.outOfProcess) app.commandLine.appendSwitch('disable-features', 'AudioServiceOutOfProcess');
 
+// Detectar entorno de escritorio
+function getDesktopEnv() {
+    const env = (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase();
+    if (env.includes('gnome')) return 'gnome';
+    if (env.includes('kde')) return 'kde';
+    return 'other';
+}
+
+// Generar icono de tray con punto amarillo
+function getTrayIcon(unread) {
+    const iconPath = unread
+        ? path.join(__dirname, 'icons', 'icon-unread.png')
+        : path.join(__dirname, 'icons', 'icon.png');
+    return nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 });
+}
+
 function createTray() {
     if (tray) return;
     const iconPath = path.join(__dirname, 'icons', 'icon.png');
@@ -237,6 +253,19 @@ if (!gotTheLock) {
                 notification.show();
             } else if (!Notification.isSupported()) {
                  console.warn('[Main] Notifications not supported on this system.');
+            }
+        });
+
+        // NUEVO: Escuchar el contador de mensajes no leídos
+        ipcMain.on('unread-count', async (event, count) => {
+            const env = getDesktopEnv();
+            if (env === 'gnome') {
+                app.setBadgeCount(count);
+            }
+            if (env === 'kde' && tray) {
+                // Cambia el icono del tray según si hay mensajes no leídos
+                const icon = await getTrayIcon(count > 0);
+                tray.setImage(icon);
             }
         });
 

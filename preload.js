@@ -47,3 +47,21 @@ Object.defineProperty(global.Notification, 'permission', {
 });
 
 console.log('[Preload] Notification API overridden.');
+
+// --- NUEVO: Detectar mensajes no leídos y enviar el contador al main ---
+function getUnreadCount() {
+  // WhatsApp Web suele poner el contador en el título, ej: "(2) WhatsApp"
+  const match = document.title.match(/^\((\d+)\)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+const observer = new MutationObserver(() => {
+  const count = getUnreadCount();
+  ipcRenderer.send('unread-count', count);
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  observer.observe(document.querySelector('title'), { childList: true });
+  // Enviar el contador inicial
+  ipcRenderer.send('unread-count', getUnreadCount());
+});
