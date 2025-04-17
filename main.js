@@ -165,87 +165,103 @@ function createWindow() {
     mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-app.whenReady().then(() => {
-    createWindow();
+// Evitar múltiples instancias
+const gotTheLock = app.requestSingleInstanceLock();
 
-    // Registrar atajo F12 para abrir/cerrar DevTools
-    globalShortcut.register('F12', () => {
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
         if (mainWindow) {
-            mainWindow.webContents.toggleDevTools();
-        }
-    });
-
-    // Escuchar las solicitudes de notificación desde el preload script
-    ipcMain.on('show-notification', (event, { title, options }) => {
-        console.log(`[Main] Received notification request: Title='${title}'`); // Log para depuración
-        if (Notification.isSupported() && mainWindow) { // Asegurarse que mainWindow exista
-            const notification = new Notification({
-                title: title,
-                body: options?.body || '',
-                icon: path.join(__dirname, 'icons', 'icon.png'), // Usar icono de la app por defecto
-                silent: options?.silent || false
-                // Podrías intentar usar options.icon si es una URL válida, pero es más complejo
-            });
-
-            notification.on('click', () => {
-                console.log('[Main] Notification clicked'); // Log para depuración
-                if (mainWindow) {
-                    console.log(`[Main] Window state before action: visible=${mainWindow.isVisible()}, minimized=${mainWindow.isMinimized()}, focused=${mainWindow.isFocused()}`); // Log detallado
-
-                    // 1. Si está minimizada, restaurarla.
-                    if (mainWindow.isMinimized()) {
-                        console.log('[Main] Window is minimized, restoring...');
-                        mainWindow.restore();
-                    }
-
-                    // 2. Si no está visible (puede estar oculta por .hide()), mostrarla.
-                    //    show() también debería traerla al frente si ya está visible pero no enfocada.
-                    if (!mainWindow.isVisible()) {
-                         console.log('[Main] Window is not visible, showing...');
-                         mainWindow.show();
-                    }
-
-                    // 3. Asegurar el foco explícitamente.
-                    console.log('[Main] Focusing window...');
-                    mainWindow.focus();
-
-                    console.log(`[Main] Window state after action: visible=${mainWindow.isVisible()}, minimized=${mainWindow.isMinimized()}, focused=${mainWindow.isFocused()}`); // Log detallado
-                } else {
-                    console.log('[Main] mainWindow is null, cannot show/focus.');
-                }
-            });
-
-            notification.on('failed', (err) => {
-                 console.error('[Main] Notification failed to show:', err);
-            });
-
-            notification.show();
-        } else if (!Notification.isSupported()) {
-             console.warn('[Main] Notifications not supported on this system.');
-        }
-    });
-
-    // Mantener el handler 'activate' para otros casos (ej. clic en el dock en macOS)
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
-        } else if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
             mainWindow.show();
             mainWindow.focus();
         }
+        // Asegura que el tray siga activo (no hace falta recrearlo aquí)
     });
 
-}); // Fin de app.whenReady().then()
+    app.whenReady().then(() => {
+        createWindow();
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        // No hacer app.quit() aquí para mantener el tray icon
-    }
-});
+        // Registrar atajo F12 para abrir/cerrar DevTools
+        globalShortcut.register('F12', () => {
+            if (mainWindow) {
+                mainWindow.webContents.toggleDevTools();
+            }
+        });
 
-// Asegurarse de desregistrar el atajo al salir
-app.on('will-quit', () => {
-    globalShortcut.unregisterAll();
-});
+        // Escuchar las solicitudes de notificación desde el preload script
+        ipcMain.on('show-notification', (event, { title, options }) => {
+            console.log(`[Main] Received notification request: Title='${title}'`); // Log para depuración
+            if (Notification.isSupported() && mainWindow) { // Asegurarse que mainWindow exista
+                const notification = new Notification({
+                    title: title,
+                    body: options?.body || '',
+                    icon: path.join(__dirname, 'icons', 'icon.png'), // Usar icono de la app por defecto
+                    silent: options?.silent || false
+                    // Podrías intentar usar options.icon si es una URL válida, pero es más complejo
+                });
 
-app.on('before-quit', () => { app.isQuiting = true; });
+                notification.on('click', () => {
+                    console.log('[Main] Notification clicked'); // Log para depuración
+                    if (mainWindow) {
+                        console.log(`[Main] Window state before action: visible=${mainWindow.isVisible()}, minimized=${mainWindow.isMinimized()}, focused=${mainWindow.isFocused()}`); // Log detallado
+
+                        // 1. Si está minimizada, restaurarla.
+                        if (mainWindow.isMinimized()) {
+                            console.log('[Main] Window is minimized, restoring...');
+                            mainWindow.restore();
+                        }
+
+                        // 2. Si no está visible (puede estar oculta por .hide()), mostrarla.
+                        //    show() también debería traerla al frente si ya está visible pero no enfocada.
+                        if (!mainWindow.isVisible()) {
+                             console.log('[Main] Window is not visible, showing...');
+                             mainWindow.show();
+                        }
+
+                        // 3. Asegurar el foco explícitamente.
+                        console.log('[Main] Focusing window...');
+                        mainWindow.focus();
+
+                        console.log(`[Main] Window state after action: visible=${mainWindow.isVisible()}, minimized=${mainWindow.isMinimized()}, focused=${mainWindow.isFocused()}`); // Log detallado
+                    } else {
+                        console.log('[Main] mainWindow is null, cannot show/focus.');
+                    }
+                });
+
+                notification.on('failed', (err) => {
+                     console.error('[Main] Notification failed to show:', err);
+                });
+
+                notification.show();
+            } else if (!Notification.isSupported()) {
+                 console.warn('[Main] Notifications not supported on this system.');
+            }
+        });
+
+        // Mantener el handler 'activate' para otros casos (ej. clic en el dock en macOS)
+        app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+            } else if (mainWindow) {
+                mainWindow.show();
+                mainWindow.focus();
+            }
+        });
+
+    }); // Fin de app.whenReady().then()
+
+    app.on('window-all-closed', () => {
+        if (process.platform !== 'darwin') {
+            // No hacer app.quit() aquí para mantener el tray icon
+        }
+    });
+
+    // Asegurarse de desregistrar el atajo al salir
+    app.on('will-quit', () => {
+        globalShortcut.unregisterAll();
+    });
+
+    app.on('before-quit', () => { app.isQuiting = true; });
+}
