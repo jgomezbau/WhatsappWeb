@@ -1,6 +1,8 @@
-const { app, BrowserWindow, Menu, session, shell, Tray, nativeImage, ipcMain, Notification, globalShortcut } = require('electron'); // Añadir ipcMain, Notification y globalShortcut
+const { app, BrowserWindow, Menu, session, shell, Tray, nativeImage, ipcMain, Notification, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+app.setName('WhatsApp');
 
 let mainWindow;
 let tray;
@@ -50,39 +52,26 @@ function createTray() {
     const iconPath = path.join(__dirname, 'icons', 'icon.png');
     tray = new Tray(nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 }));
 
-    const mediaConfig = readMediaConfig();
-
-    const multimediaMenu = [
-        {
-            label: `Control automático de ganancia (AGC): ${mediaConfig.agc ? 'Deshabilitado' : 'Habilitado'}`,
-            type: 'checkbox',
-            checked: mediaConfig.agc,
-            click: () => toggleMediaOption('agc')
-        },
-        {
-            label: `Límite de volumen: ${mediaConfig.volumeLimit ? 'Deshabilitado' : 'Habilitado'}`,
-            type: 'checkbox',
-            checked: mediaConfig.volumeLimit,
-            click: () => toggleMediaOption('volumeLimit')
-        },
-        {
-            label: `AudioService OutOfProcess: ${mediaConfig.outOfProcess ? 'Deshabilitado' : 'Habilitado'}`,
-            type: 'checkbox',
-            checked: mediaConfig.outOfProcess,
-            click: () => toggleMediaOption('outOfProcess')
-        }
-    ];
-
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Mostrar WhatsApp', click: () => mainWindow?.show() },
-        { type: 'separator' },
-        { label: 'Opciones Multimedia', submenu: multimediaMenu },
-        { type: 'separator' },
-        { label: 'Salir', click: () => { app.isQuiting = true; app.quit(); } }
+        {
+            label: 'Mostrar WhatsApp',
+            click: () => {
+                if (mainWindow) mainWindow.show();
+            }
+        },
+        {
+            label: 'Salir',
+            click: () => {
+                app.quit(); // Esto termina todos los procesos
+            }
+        }
     ]);
     tray.setToolTip('WhatsApp');
     tray.setContextMenu(contextMenu);
-    tray.on('click', () => mainWindow?.show());
+
+    tray.on('double-click', () => {
+        if (mainWindow) mainWindow.show();
+    });
 }
 
 // Cambiar opción multimedia y reiniciar la app
@@ -100,6 +89,7 @@ function createWindow() {
         height: 800,
         icon: path.join(__dirname, 'icons', 'icon.png'),
         show: false,
+        title: "WhatsApp",
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -282,9 +272,8 @@ if (!gotTheLock) {
     }); // Fin de app.whenReady().then()
 
     app.on('window-all-closed', () => {
-        if (process.platform !== 'darwin') {
-            // No hacer app.quit() aquí para mantener el tray icon
-        }
+        // Si quieres que la app termine completamente al cerrar la ventana:
+        app.quit();
     });
 
     // Asegurarse de desregistrar el atajo al salir

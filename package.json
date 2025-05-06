@@ -29,7 +29,11 @@
             "category": "Network;Chat",
             "maintainer": "Juan Bau",
             "vendor": "WhatsApp Desktop Unofficial",
-            "executableName": "Whatsapp-Desktop",
+            "executableName": "WhatsApp",
+            "desktop": {
+                "Name": "WhatsApp",
+                "StartupWMClass": "WhatsApp"
+            },
             "synopsis": "Cliente no oficial de WhatsApp con soporte para videollamadas",
             "artifactName": "WhatsApp-Desktop-${version}.${ext}"
         },
