@@ -1,110 +1,156 @@
 # WhatsApp Desktop para Linux
 
-**Versión 1.0.1**
+**Versión 3.0.0** · Cliente no oficial basado en Electron
 
-Esta es una aplicación de escritorio desarrollada utilizando **Electron**, que permite a los usuarios interactuar con **WhatsApp** de manera independiente del navegador, con soporte para llamadas y videollamadas. El objetivo de este proyecto es proporcionar una experiencia de usuario equivalente a la aplicación oficial de WhatsApp para Windows/Mac, pero en sistemas Linux.
-
-## Características
-
-- **Aplicación nativa para Linux**: Ejecuta WhatsApp directamente en el escritorio sin necesidad de un navegador web.
-- **Soporte completo para llamadas y videollamadas**: A diferencia de la versión web en navegadores, esta aplicación permite realizar y recibir llamadas y videollamadas.
-- **User-Agent personalizado**: Simula un navegador Chrome para evitar restricciones de WhatsApp Web.
-- **Permisos multimedia**: Configuración completa para acceder a cámara, micrófono y notificaciones.
-- **Menú contextual personalizado**: Opciones como cortar, copiar, pegar, recargar, imprimir y herramientas de desarrollo.
-- **Optimizado para Linux**: Creado específicamente para funcionar en distribuciones basadas en Debian.
-- **Incorpora Tray icon**: Incorpora el icono de Whatsapp en el tray, asi si cerramos la ventana de prioncipal, podemos seguir accediendo mediante el icono en el tray.
-
-## Tecnologías utilizadas
-
-- **Electron**: Framework para crear aplicaciones de escritorio utilizando tecnologías web.
-- **Node.js**: Entorno de ejecución para JavaScript del lado del servidor.
-- **JavaScript/HTML/CSS**: Para el desarrollo de la interfaz de usuario.
-
-## Requisitos previos
-
-Antes de comenzar, asegúrate de tener lo siguiente instalado:
-
-- **Node.js** (Versión 14 o superior)
-- **npm** (Node Package Manager)
-
-## Instalación
-
-### Pasos para instalar y ejecutar la aplicación:
-
-1. **Clonar el repositorio**:
-
-   ```bash
-   git clone https://github.com/jgomezbau/whatsapp-desktop.git
-   cd whatsapp-desktop
-   ```
-
-2. **Instalar dependencias**:
-
-   ```bash
-   npm install
-   ```
-
-3. **Ejecutar la aplicación**:
-
-   ```bash
-   npm start
-   ```
-
-4. **Crear el archivo AppImage**:
-
-   ```bash
-   npm run linux
-   ```
-
-   El archivo AppImage se generará en la carpeta `dist/`.
-
-## Cómo funciona
-
-Esta aplicación funciona creando un entorno Electron con configuraciones específicas para evitar la detección como "navegador no compatible" por parte de WhatsApp Web. Utiliza:
-
-1. **User-Agent personalizado**: Simula ser Chrome para evitar restricciones.
-2. **Preload Script**: Modifica el entorno del navegador para ocultar características de Electron.
-3. **Configuraciones especiales**: Habilita características específicas de WebRTC necesarias para videollamadas.
-4. **Gestión de permisos**: Configura automáticamente los permisos de cámara y micrófono.
-
-## Uso
-
-- **Inicio de sesión**: Escanea el código QR con WhatsApp en tu teléfono, igual que en WhatsApp Web.
-- **Videollamadas**: Las videollamadas funcionarán automáticamente sin configuración adicional.
-- **Menú contextual**: Haz clic derecho para acceder a opciones como copiar, pegar, recargar, etc.
-- **DevTools**: Puedes acceder a las herramientas de desarrollo desde el menú contextual.
-
-## Solución de problemas
-
-Si experimentas problemas:
-
-1. **Permisos de cámara/micrófono**: Si tienes problemas con la cámara o el micrófono, usa la opción "Inspeccionar" del menú contextual para ver los errores.
-2. **Reinicio de sesión**: A veces, cerrar la sesión y volver a escanear el código QR soluciona problemas de conexión.
-3. **Error de navegador no compatible**: Si aparece este mensaje, comunícalo como un issue en el repositorio.
-
-## Limitaciones
-
-- Esta aplicación no es oficial y podría dejar de funcionar si WhatsApp cambia su política o implementación.
-- No se garantiza que todas las funciones estén disponibles o que permanezcan funcionando tras actualizaciones de WhatsApp.
-
-## Contribuciones
-
-Si deseas contribuir a este proyecto, por favor:
-
-1. Haz un fork del repositorio.
-2. Crea una nueva rama para tus cambios: `git checkout -b feature/nueva-funcionalidad`.
-3. Realiza tus cambios y haz commit: `git commit -am 'Añadir nueva funcionalidad'`.
-4. Sube los cambios a tu fork: `git push origin feature/nueva-funcionalidad`.
-5. Crea un Pull Request.
-
-## Licencia
-
-Este proyecto está licenciado bajo la MIT License.
-
-## Descargo de responsabilidad
-
-Esta aplicación no está afiliada, asociada, autorizada, respaldada por, o de ninguna manera oficialmente conectada con WhatsApp o cualquiera de sus filiales o subsidiarias. WhatsApp es una marca registrada de sus respectivos propietarios.
+Un wrapper moderno de WhatsApp Web optimizado para Linux, con soporte completo para videollamadas, notificaciones nativas, icono en el tray y mucho más.
 
 ---
 
-**Este README refleja las características, el uso y las instrucciones de instalación de la aplicación de escritorio para WhatsApp, optimizada para soportar llamadas y videollamadas en sistemas Linux.**
+## Características
+
+| Característica | Descripción |
+|---|---|
+| 🎥 Videollamadas | WebRTC + PipeWire — funciona en Wayland y X11 |
+| 🔔 Notificaciones nativas | Las notificaciones del sistema se muestran correctamente |
+| 🔍 Buscar en página | `Ctrl+F` abre una barra de búsqueda integrada |
+| 🔎 Zoom ajustable | `Ctrl++` / `Ctrl+-` / `Ctrl+0` (persiste entre sesiones) |
+| 📥 Gestor de descargas | Diálogo para elegir ruta + barra de progreso en la ventana |
+| 🖥️ Icono en el tray | Cierra al tray, badge de mensajes no leídos (GNOME/KDE) |
+| ✅ Corrector ortográfico | Integrado, con sugerencias en el menú contextual |
+| 🔄 Auto-actualización | electron-updater vía GitHub Releases (en builds empaquetados) |
+| 💤 Reconexión al despertar | Se recarga automáticamente al salir del modo suspensión |
+| 🔒 Seguridad mejorada | `webSecurity: true`, sin `nodeIntegration`, `contextIsolation` activo |
+
+---
+
+## Estructura del proyecto
+
+```
+whatsapp-desktop/
+├── src/
+│   ├── main/
+│   │   ├── main.js       ← Punto de entrada del proceso principal
+│   │   ├── store.js      ← Configuración persistente (JSON)
+│   │   ├── windows.js    ← Gestión de ventanas
+│   │   ├── tray.js       ← Icono en el área de notificaciones
+│   │   ├── ipc.js        ← Canales de comunicación IPC
+│   │   └── updater.js    ← Auto-actualización
+│   ├── preload/
+│   │   └── preload.js    ← Bridge seguro renderer ↔ main
+│   └── renderer/
+│       └── loading.html  ← Pantalla de carga animada
+├── resources/
+│   └── icons/
+│       ├── icon.png
+│       ├── icon.ico
+│       └── icon-unread.png
+├── package.json
+└── README.md
+```
+
+---
+
+## Requisitos previos
+
+- **Node.js** 20 LTS o superior
+- **npm** 10+
+- Linux (x64 o arm64); probado en Ubuntu 24.04, Fedora 40, Arch Linux
+
+---
+
+## Instalación y desarrollo
+
+```bash
+# 1. Clonar
+git clone https://github.com/jgomezbau/whatsapp-desktop.git
+cd whatsapp-desktop
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Ejecutar en modo desarrollo
+npm start
+
+# 4. Inspección de proceso principal (Chrome DevTools en chrome://inspect)
+npm run dev
+```
+
+---
+
+## Compilar distribución
+
+```bash
+# AppImage (x64 + arm64) y .deb (x64)
+npm run build:all
+
+# Solo AppImage
+npm run build:appimage
+
+# Solo .deb
+npm run build:deb
+```
+
+Los artefactos se generan en `dist/`.
+
+---
+
+## Atajos de teclado
+
+| Atajo | Acción |
+|---|---|
+| `Ctrl+F` | Buscar en la página |
+| `Ctrl++` / `Ctrl+=` | Aumentar zoom |
+| `Ctrl+-` | Reducir zoom |
+| `Ctrl+0` | Restablecer zoom |
+| `Ctrl+R` / `F5` | Recargar WhatsApp |
+| `Ctrl+Q` | Salir de la aplicación |
+| `F12` | Abrir DevTools |
+
+---
+
+## Configuración
+
+La configuración se guarda en `~/.config/whatsapp-desktop/config.json`.  
+Puedes editarla con el menú contextual (clic derecho) → ajustes o directamente:
+
+| Clave | Tipo | Por defecto | Descripción |
+|---|---|---|---|
+| `closeToTray` | bool | `true` | Cerrar ventana → ocultar al tray |
+| `startMinimized` | bool | `false` | Arrancar minimizado |
+| `spellCheck` | bool | `true` | Corrector ortográfico |
+| `notifications` | bool | `true` | Notificaciones nativas |
+| `zoom` | number | `1.0` | Factor de zoom (0.5–2.0) |
+| `hardwareAccel` | bool | `true` | Aceleración GPU |
+| `audioConfig.agc` | bool | `false` | Desactivar remuestreo de audio |
+| `audioConfig.volumeLimit` | bool | `false` | Desactivar límite de volumen |
+
+---
+
+## Solución de problemas
+
+**Cámara / micrófono no funcionan**  
+→ Asegúrate de que tu usuario tiene permisos de `video` y `audio` (`groups $USER`).  
+→ En Wayland, comprueba que PipeWire esté corriendo: `systemctl --user status pipewire`.
+
+**Pantalla negra o "navegador no compatible"**  
+→ Ejecuta `npm start` en terminal y revisa la consola para ver el error exacto.  
+→ Prueba a deshabilitar la aceleración hardware en `config.json`: `"hardwareAccel": false`.
+
+**Notificaciones no aparecen (KDE)**  
+→ Verifica que `libnotify` esté instalado: `sudo apt install libnotify-bin` (Debian/Ubuntu).
+
+---
+
+## Contribuciones
+
+1. Fork → rama `feature/nombre-funcionalidad`
+2. Cambios + `git commit -am 'feat: descripción'`
+3. Push + Pull Request
+
+---
+
+## Descargo de responsabilidad
+
+Este proyecto no está afiliado ni avalado por WhatsApp LLC o Meta Platforms, Inc.  
+WhatsApp® es una marca registrada de sus respectivos propietarios.  
+Este software se distribuye bajo la licencia MIT.
