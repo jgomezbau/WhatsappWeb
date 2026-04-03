@@ -1,7 +1,7 @@
 # Ignorar la carpeta node_modules
 /node_modules
 /dist
-
+package-lock.json
 
 # Ignorar archivos de configuración
 #config.json
