@@ -2,6 +2,7 @@
 /node_modules
 /dist
 
+
 # Ignorar archivos de configuración
 #config.json
 #secrets.env
