@@ -28,7 +28,7 @@
     ],
     "extraResources": [
       {
-        "from": "resources/icons",
+        "from": "icons",
         "to": "icons",
         "filter": ["**/*"]
       }
@@ -36,18 +36,20 @@
     "linux": {
       "target": [
         { "target": "AppImage", "arch": ["x64", "arm64"] },
-        { "target": "deb",      "arch": ["x64"] }
+        { "target": "deb", "arch": ["x64"] }
       ],
-      "icon": "resources/icons",
+      "icon": "icons",
       "category": "Network;Chat;InstantMessaging",
       "maintainer": "Juan Bau",
       "executableName": "whatsapp-desktop",
       "synopsis": "Cliente no oficial de WhatsApp con videollamadas para Linux",
       "artifactName": "WhatsApp-Desktop-${version}-${arch}.${ext}",
       "desktop": {
-        "Name": "WhatsApp",
-        "Comment": "Cliente no oficial de WhatsApp para Linux",
-        "Keywords": "whatsapp;chat;messaging"
+        "entry": {
+          "Name": "WhatsApp",
+          "Comment": "Cliente no oficial de WhatsApp para Linux",
+          "Keywords": "whatsapp;chat;messaging"
+        }
       }
     },
     "deb": {
@@ -64,7 +66,7 @@
   },
   "devDependencies": {
     "electron": "^35.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.8.1"
   },
   "dependencies": {
     "electron-updater": "^6.3.0"

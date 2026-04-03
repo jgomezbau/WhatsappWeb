@@ -112,22 +112,22 @@ class TrayManager {
 
   _iconPath (hasUnread) {
     const filename = hasUnread ? 'icon-unread.png' : 'icon.png';
-
-    // En desarrollo: src/main/ → ../../icons/
-    // En producción (empaquetado): resources/icons/
-    const devPath  = path.join(__dirname, '../../icons', filename);
-    const prodPath = path.join(process.resourcesPath, 'icons', filename);
-
     const fs = require('fs');
-    return fs.existsSync(devPath) ? devPath : prodPath;
+
+    const devPath  = path.join(__dirname, '../../icons', filename);
+    if (fs.existsSync(devPath)) return devPath;
+
+    const prodPath = path.join(process.resourcesPath, 'icons', filename);
+    if (fs.existsSync(prodPath)) return prodPath;
+
+    return null; // ← ninguno existe, usar fallback
   }
+
   _icon (hasUnread) {
     const p = this._iconPath(hasUnread);
-    const require_ = require('fs');
-    if (require_.existsSync(p)) {
+    if (p) {
       return nativeImage.createFromPath(p).resize({ width: 22, height: 22 });
     }
-    // Fallback: programmatically built icon (32×32 green circle)
     return this._buildFallbackIcon(hasUnread);
   }
 
