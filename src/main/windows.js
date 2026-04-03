@@ -5,10 +5,11 @@ const {
 } = require('electron');
 const path = require('path');
 
-const WHATSAPP_URL  = 'https://web.whatsapp.com';
-const USER_AGENT    =
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const WHATSAPP_URL = 'https://web.whatsapp.com';
+const USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.0.0 ' +
+  'Electron/30.0.8 Safari/537.36';
 
 class WindowManager {
   /** @param {import('./store').Store} store */
@@ -33,12 +34,12 @@ class WindowManager {
       icon: this._iconPath('icon.png'),
       show: false,
       title: 'WhatsApp',
-      backgroundColor: '#111b21',           // dark bg prevents white flash
+      backgroundColor: '#111b21',
       webPreferences: {
         preload:          path.join(__dirname, '../preload/preload.js'),
         nodeIntegration:  false,
         contextIsolation: true,
-        sandbox:          false,            // needed for preload IPC
+        sandbox:          false,
         spellcheck:       this.store.get('spellCheck'),
         webSecurity:      true,
         allowRunningInsecureContent: false,
@@ -48,7 +49,6 @@ class WindowManager {
     this._configureSession();
     this._attachListeners();
 
-    // Show loading screen first, then load WhatsApp
     await this.win.loadFile(
       path.join(__dirname, '../renderer/loading.html')
     );
@@ -56,7 +56,6 @@ class WindowManager {
     this.win.show();
     if (!this.store.get('startMinimized')) this.win.focus();
 
-    // Give the loading screen a moment to render, then load WhatsApp
     setTimeout(() => {
       if (this.win) this.win.loadURL(WHATSAPP_URL, { userAgent: USER_AGENT });
     }, 600);
@@ -69,13 +68,11 @@ class WindowManager {
   _configureSession () {
     const ses = session.defaultSession;
 
-    // Spoof User-Agent on every request
     ses.webRequest.onBeforeSendHeaders((details, callback) => {
       details.requestHeaders['User-Agent'] = USER_AGENT;
       callback({ requestHeaders: details.requestHeaders });
     });
 
-    // Grant only the permissions WhatsApp actually needs
     const ALLOWED = new Set([
       'media', 'mediaKeySystem', 'geolocation',
       'notifications', 'fullscreen', 'pointerLock',
@@ -85,12 +82,10 @@ class WindowManager {
       cb(ALLOWED.has(permission));
     });
 
-    // Spell-check language (use system locale)
     if (this.store.get('spellCheck')) {
       ses.setSpellCheckerLanguages([app.getLocale(), 'en-US'].filter(Boolean));
     }
 
-    // Intercept downloads
     ses.on('will-download', (_e, item) => {
       this._handleDownload(item);
     });
@@ -101,11 +96,9 @@ class WindowManager {
   _attachListeners () {
     const win = this.win;
 
-    // Persist window size/position
     win.on('resize', () => this._saveBounds());
     win.on('move',   () => this._saveBounds());
 
-    // Close → hide to tray (if configured)
     win.on('close', (e) => {
       if (!app.isQuiting && this.store.get('closeToTray')) {
         e.preventDefault();
@@ -117,13 +110,68 @@ class WindowManager {
 
     win.on('closed', () => { this.win = null; });
 
-    // Navigation guard — keep all traffic inside WhatsApp
-    win.webContents.setWindowOpenHandler(({ url }) => {
+    // ── Spoof navigator en el mundo real de la página ─────────────────────
+    // executeJavaScript corre en el contexto de la página, no en el preload,
+    // por lo que bypasa contextIsolation y WhatsApp puede ver los cambios.
+    win.webContents.on('dom-ready', () => {
+      win.webContents.executeJavaScript(`
+        (() => {
+          try {
+            const WA_UA =
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+              '(KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.0.0 ' +
+              'Electron/30.0.8 Safari/537.36';
+
+            Object.defineProperty(navigator, 'userAgent', {
+              get: () => WA_UA, configurable: true
+            });
+            Object.defineProperty(navigator, 'platform', {
+              get: () => 'Win32', configurable: true
+            });
+            Object.defineProperty(navigator, 'appVersion', {
+              get: () => WA_UA.replace('Mozilla/', ''), configurable: true
+            });
+
+            window.WhatsAppDesktop = {
+              nativeExposeVersionInfo: () => ({
+                waVersion:      '2.2412.54',
+                osVersion:      '10.0.19045',
+                desktopVersion: '2.2412.54',
+                isMAS:          false,
+                isAppStore:     false
+              }),
+              ipcRenderer: { send: () => {}, on: () => {} }
+            };
+          } catch (e) {
+            console.warn('[spoof] navigator error:', e);
+          }
+        })();
+      `).catch(() => {});
+    });
+
+    // ── Ventanas emergentes (llamadas / videollamadas) ─────────────────────
+    win.webContents.setWindowOpenHandler(({ url, features }) => {
       if (url.startsWith(WHATSAPP_URL)) {
+        if (features.includes('popup') || features.includes('width')) {
+          return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+              width:  1280,
+              height: 800,
+              icon: this._iconPath('icon.png'),
+              webPreferences: {
+                preload:          path.join(__dirname, '../preload/preload.js'),
+                nodeIntegration:  false,
+                contextIsolation: true,
+                sandbox:          false,
+              }
+            }
+          };
+        }
         win.loadURL(url, { userAgent: USER_AGENT });
-      } else {
-        shell.openExternal(url);
+        return { action: 'deny' };
       }
+      shell.openExternal(url);
       return { action: 'deny' };
     });
 
@@ -134,13 +182,11 @@ class WindowManager {
       }
     });
 
-    // Restore zoom from config after each navigation
     win.webContents.on('did-finish-load', () => {
       const z = this.store.get('zoom');
       if (z !== 1.0) win.webContents.setZoomFactor(z);
     });
 
-    // Handle page crashes gracefully
     win.webContents.on('render-process-gone', (_e, details) => {
       console.error('[Window] Renderer crashed:', details.reason);
       dialog.showMessageBox(win, {
@@ -167,7 +213,6 @@ class WindowManager {
       });
     });
 
-    // Right-click context menu
     win.webContents.on('context-menu', (_e, params) => {
       this._buildContextMenu(params).popup();
     });
@@ -179,13 +224,9 @@ class WindowManager {
     const win = this.win;
     const items = [];
 
-    // Spell check suggestions
     if (params.misspelledWord) {
       for (const s of params.dictionarySuggestions.slice(0, 5)) {
-        items.push({
-          label: s,
-          click: () => win.webContents.replaceMisspelling(s)
-        });
+        items.push({ label: s, click: () => win.webContents.replaceMisspelling(s) });
       }
       items.push(
         { type: 'separator' },
@@ -199,12 +240,11 @@ class WindowManager {
       );
     }
 
-    // Standard edit actions
     if (params.isEditable) {
       items.push(
-        { label: 'Cortar',  role: 'cut',   enabled: params.selectionText !== '' },
-        { label: 'Copiar',  role: 'copy',  enabled: params.selectionText !== '' },
-        { label: 'Pegar',   role: 'paste' },
+        { label: 'Cortar',           role: 'cut',       enabled: params.selectionText !== '' },
+        { label: 'Copiar',           role: 'copy',      enabled: params.selectionText !== '' },
+        { label: 'Pegar',            role: 'paste' },
         { label: 'Seleccionar todo', role: 'selectAll' },
         { type: 'separator' }
       );
@@ -215,16 +255,14 @@ class WindowManager {
       );
     }
 
-    // Link handling
     if (params.linkURL) {
       items.push(
-        { label: 'Abrir enlace', click: () => shell.openExternal(params.linkURL) },
-        { label: 'Copiar enlace', click: () => { require('electron').clipboard.writeText(params.linkURL); } },
+        { label: 'Abrir enlace',  click: () => shell.openExternal(params.linkURL) },
+        { label: 'Copiar enlace', click: () => require('electron').clipboard.writeText(params.linkURL) },
         { type: 'separator' }
       );
     }
 
-    // Image saving
     if (params.mediaType === 'image' && params.srcURL) {
       items.push(
         { label: 'Guardar imagen...', click: () => this._saveImage(params.srcURL) },
@@ -232,7 +270,6 @@ class WindowManager {
       );
     }
 
-    // App actions
     items.push(
       { label: 'Recargar',     click: () => win.loadURL(WHATSAPP_URL, { userAgent: USER_AGENT }) },
       { label: 'Buscar...',    accelerator: 'Ctrl+F', click: () => this.openFindInPage() },
@@ -253,10 +290,7 @@ class WindowManager {
       defaultPath: path.join(app.getPath('downloads'), filename)
     });
 
-    if (!savePath) {
-      item.cancel();
-      return;
-    }
+    if (!savePath) { item.cancel(); return; }
 
     item.setSavePath(savePath);
 
@@ -271,9 +305,7 @@ class WindowManager {
 
     item.once('done', (_e, state) => {
       if (this.win) this.win.setProgressBar(-1);
-      if (state === 'completed') {
-        this._notify('Descarga completada', `${filename} guardado.`);
-      }
+      if (state === 'completed') this._notify('Descarga completada', `${filename} guardado.`);
     });
   }
 
@@ -284,8 +316,8 @@ class WindowManager {
     });
     if (!savePath) return;
     try {
-      const res  = await fetch(srcURL);
-      const buf  = Buffer.from(await res.arrayBuffer());
+      const res = await fetch(srcURL);
+      const buf = Buffer.from(await res.arrayBuffer());
       require('fs').writeFileSync(savePath, buf);
       this._notify('Imagen guardada', path.basename(savePath));
     } catch (err) {
@@ -323,18 +355,18 @@ class WindowManager {
         document.body.appendChild(bar);
         const input = document.getElementById('__wad-find-input');
         input.focus();
-        input.addEventListener('input', (e) => window.__wadFind(e.target.value, false));
+        input.addEventListener('input', (e) => window.__wadFind?.(e.target.value, false));
         input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter')  window.__wadFind(input.value, !e.shiftKey);
+          if (e.key === 'Enter')  window.__wadFind?.(input.value, !e.shiftKey);
           if (e.key === 'Escape') document.getElementById('__wad-find-close').click();
         });
-        document.getElementById('__wad-find-next').onclick  = () => window.__wadFind(input.value, true);
-        document.getElementById('__wad-find-prev').onclick  = () => window.__wadFind(input.value, false);
+        document.getElementById('__wad-find-next').onclick  = () => window.__wadFind?.(input.value, true);
+        document.getElementById('__wad-find-prev').onclick  = () => window.__wadFind?.(input.value, false);
         document.getElementById('__wad-find-close').onclick = () => {
           bar.remove(); window.electronAPI?.stopFindInPage();
         };
       })();
-    `);
+    `).catch(() => {});
   }
 
   // ─── Zoom ─────────────────────────────────────────────────────────────────
@@ -362,13 +394,9 @@ class WindowManager {
     this.win.focus();
   }
 
-  toggleDevTools () {
-    this.win?.webContents.toggleDevTools();
-  }
+  toggleDevTools () { this.win?.webContents.toggleDevTools(); }
 
-  reload () {
-    this.win?.loadURL(WHATSAPP_URL, { userAgent: USER_AGENT });
-  }
+  reload () { this.win?.loadURL(WHATSAPP_URL, { userAgent: USER_AGENT }); }
 
   isVisible () { return this.win?.isVisible() ?? false; }
 
@@ -380,8 +408,6 @@ class WindowManager {
   _iconPath (filename) {
     const devPath  = path.join(__dirname, '../../icons', filename);
     const prodPath = path.join(process.resourcesPath ?? '', 'icons', filename);
-
-    const fs = require('fs');
     return require('fs').existsSync(devPath) ? devPath : prodPath;
   }
 
