@@ -59,7 +59,7 @@
     "publish": {
       "provider": "github",
       "owner": "jgomezbau",
-      "repo": "whatsapp-desktop"
+      "repo": "whatsapp-desktop-linux"
     }
   },
   "devDependencies": {
