@@ -7,9 +7,8 @@ const path = require('path');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
 const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.0.0 ' +
-  'Electron/30.0.8 Safari/537.36';
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 class WindowManager {
   /** @param {import('./store').Store} store */
@@ -76,11 +75,15 @@ class WindowManager {
     const ALLOWED = new Set([
       'media', 'mediaKeySystem', 'geolocation',
       'notifications', 'fullscreen', 'pointerLock',
-      'clipboard-sanitized-write'
+      'clipboard-sanitized-write',
+      'persistent-storage'
     ]);
     ses.setPermissionRequestHandler((_wc, permission, cb) => {
       cb(ALLOWED.has(permission));
     });
+
+    // Forzar partición persistente — WhatsApp lo requiere para llamadas
+    ses.flushStorageData();
 
     if (this.store.get('spellCheck')) {
       ses.setSpellCheckerLanguages([app.getLocale(), 'en-US'].filter(Boolean));
@@ -110,45 +113,6 @@ class WindowManager {
 
     win.on('closed', () => { this.win = null; });
 
-    // ── Spoof navigator en el mundo real de la página ─────────────────────
-    // executeJavaScript corre en el contexto de la página, no en el preload,
-    // por lo que bypasa contextIsolation y WhatsApp puede ver los cambios.
-    win.webContents.on('dom-ready', () => {
-      win.webContents.executeJavaScript(`
-        (() => {
-          try {
-            const WA_UA =
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-              '(KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.0.0 ' +
-              'Electron/30.0.8 Safari/537.36';
-
-            Object.defineProperty(navigator, 'userAgent', {
-              get: () => WA_UA, configurable: true
-            });
-            Object.defineProperty(navigator, 'platform', {
-              get: () => 'Win32', configurable: true
-            });
-            Object.defineProperty(navigator, 'appVersion', {
-              get: () => WA_UA.replace('Mozilla/', ''), configurable: true
-            });
-
-            window.WhatsAppDesktop = {
-              nativeExposeVersionInfo: () => ({
-                waVersion:      '2.2412.54',
-                osVersion:      '10.0.19045',
-                desktopVersion: '2.2412.54',
-                isMAS:          false,
-                isAppStore:     false
-              }),
-              ipcRenderer: { send: () => {}, on: () => {} }
-            };
-          } catch (e) {
-            console.warn('[spoof] navigator error:', e);
-          }
-        })();
-      `).catch(() => {});
-    });
-
     // ── Ventanas emergentes (llamadas / videollamadas) ─────────────────────
     win.webContents.setWindowOpenHandler(({ url, features }) => {
       if (url.startsWith(WHATSAPP_URL)) {
@@ -160,10 +124,13 @@ class WindowManager {
               height: 800,
               icon: this._iconPath('icon.png'),
               webPreferences: {
-                preload:          path.join(__dirname, '../preload/preload.js'),
-                nodeIntegration:  false,
-                contextIsolation: true,
-                sandbox:          false,
+                  preload:          path.join(__dirname, '../preload/preload.js'),
+                  nodeIntegration:  false,
+                  contextIsolation: true,
+                  sandbox:          false,
+                  spellcheck:       this.store.get('spellCheck'),
+                  webSecurity:      true,
+                  allowRunningInsecureContent: false,
               }
             }
           };
