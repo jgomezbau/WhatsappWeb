@@ -3,6 +3,8 @@
 const {
   app, globalShortcut, powerMonitor, Menu, shell
 } = require('electron');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const { Store }         = require('./store');
@@ -21,13 +23,13 @@ const audioConfig = store.get('audioConfig');
 if (audioConfig.agc)         app.commandLine.appendSwitch('disable-audio-output-resampler');
 if (audioConfig.volumeLimit) app.commandLine.appendSwitch('disable-audio-volume-limit');
 
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer,VaapiVideoDecoder');
-app.commandLine.appendSwitch('enable-webrtc-hide-local-ips-with-mdns', 'false');
-
+const enabledFeatures = ['WebRTCPipeWireCapturer', 'VaapiVideoDecoder'];
 if (process.env.WAYLAND_DISPLAY && !process.env.ELECTRON_OZONE_PLATFORM_HINT) {
   app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-  app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
+  enabledFeatures.push('WaylandWindowDecorations');
 }
+app.commandLine.appendSwitch('enable-features', enabledFeatures.join(','));
+app.commandLine.appendSwitch('enable-webrtc-hide-local-ips-with-mdns', 'false');
 
 app.setName('WhatsApp');
 
@@ -46,6 +48,67 @@ app.on('second-instance', (_e, argv) => {
   if (url && wm?.win) wm.win.webContents.send('protocol-url', url);
 });
 
+function ensureAppImageDesktopEntry() {
+  const appImagePath = process.env.APPIMAGE;
+  if (!appImagePath) return;
+
+  const home = os.homedir();
+  const applicationsDir = path.join(home, '.local', 'share', 'applications');
+  const iconsDir = path.join(home, '.local', 'share', 'icons', 'hicolor', '256x256', 'apps');
+  const desktopFile = path.join(applicationsDir, 'whatsapp-desktop.desktop');
+  const installedIconPath = path.join(iconsDir, 'whatsapp-desktop.png');
+
+  const iconCandidates = [
+    path.join(process.resourcesPath || '', 'icons', 'icon.png'),
+    path.join(process.resourcesPath || '', 'resources', 'icons', 'icon.png'),
+    path.join(__dirname, '../../resources/icons/icon.png')
+  ];
+
+  const sourceIconPath = iconCandidates.find(candidate => fs.existsSync(candidate));
+  if (!sourceIconPath) return;
+
+  fs.mkdirSync(applicationsDir, { recursive: true });
+  fs.mkdirSync(iconsDir, { recursive: true });
+
+  try {
+    if (
+      !fs.existsSync(installedIconPath) ||
+      fs.statSync(sourceIconPath).mtimeMs > fs.statSync(installedIconPath).mtimeMs
+    ) {
+      fs.copyFileSync(sourceIconPath, installedIconPath);
+    }
+  } catch {}
+
+  const desktopContent = `[Desktop Entry]
+Type=Application
+Name=WhatsApp
+Comment=Aplicación de escritorio para WhatsApp con soporte para videollamadas
+Exec="${appImagePath}" --no-sandbox %U
+TryExec=${appImagePath}
+Icon=${installedIconPath}
+Terminal=false
+Categories=Network;Chat;InstantMessaging;
+Keywords=whatsapp;chat;messaging;
+MimeType=x-scheme-handler/whatsapp;
+StartupNotify=true
+StartupWMClass=whatsapp-desktop
+`;
+
+  try {
+    const current = fs.existsSync(desktopFile) ? fs.readFileSync(desktopFile, 'utf8') : '';
+    if (current !== desktopContent) {
+      fs.writeFileSync(desktopFile, desktopContent, { mode: 0o755 });
+    }
+  } catch {}
+
+  try {
+    require('child_process').spawn('update-desktop-database', [applicationsDir], {
+      detached: true,
+      stdio: 'ignore'
+    }).unref();
+  } catch {}
+}
+
 // ── Inyectar shortcut de WhatsApp Web en la página ───────────────────────
 function injectWA (shortcut) {
   if (!wm?.win) return;
@@ -58,13 +121,12 @@ function injectWA (shortcut) {
 }
 
 app.whenReady().then(async () => {
+  ensureAppImageDesktopEntry();
+
   wm = new WindowManager(store);
   await wm.create();
 
-  // ── Menú completo ────────────────────────────────────────────────────────
   const menu = Menu.buildFromTemplate([
-
-    // ── CHATS ───────────────────────────────────────────────────────────────
     {
       label: 'Chats',
       submenu: [
@@ -123,8 +185,6 @@ app.whenReady().then(async () => {
         }
       ]
     },
-
-    // ── LLAMADAS ────────────────────────────────────────────────────────────
     {
       label: 'Llamadas',
       submenu: [
@@ -169,8 +229,6 @@ app.whenReady().then(async () => {
         }
       ]
     },
-
-    // ── EDITAR ──────────────────────────────────────────────────────────────
     {
       label: 'Editar',
       submenu: [
@@ -189,8 +247,6 @@ app.whenReady().then(async () => {
         }
       ]
     },
-
-    // ── VISTA ───────────────────────────────────────────────────────────────
     {
       label: 'Vista',
       submenu: [
@@ -237,8 +293,6 @@ app.whenReady().then(async () => {
         }
       ]
     },
-
-    // ── VENTANA ─────────────────────────────────────────────────────────────
     {
       label: 'Ventana',
       submenu: [
@@ -270,8 +324,6 @@ app.whenReady().then(async () => {
         }
       ]
     },
-
-    // ── AJUSTES ─────────────────────────────────────────────────────────────
     {
       label: 'Ajustes',
       submenu: [
@@ -334,8 +386,6 @@ app.whenReady().then(async () => {
         }
       ]
     },
-
-    // ── AYUDA ───────────────────────────────────────────────────────────────
     {
       label: 'Ayuda',
       submenu: [
@@ -373,15 +423,12 @@ app.whenReady().then(async () => {
         }
       ]
     }
-
   ]);
 
   Menu.setApplicationMenu(menu);
 
-  // Oculto por defecto — Alt lo muestra momentáneamente (estándar Linux/Windows)
   wm.win.setMenuBarVisibility(false);
   wm.win.setAutoHideMenuBar(true);
-  // ─────────────────────────────────────────────────────────────────────────
 
   tm = new TrayManager(wm, store);
   tm.create();
@@ -425,7 +472,7 @@ function _watchPower () {
 }
 
 app.on('before-quit', () => { app.isQuiting = true; });
-app.on('will-quit',   () => globalShortcut.unregisterAll());
+app.on('will-quit', () => globalShortcut.unregisterAll());
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

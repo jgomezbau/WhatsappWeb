@@ -48,7 +48,8 @@
         "entry": {
           "Name": "WhatsApp",
           "Comment": "Cliente no oficial de WhatsApp para Linux",
-          "Keywords": "whatsapp;chat;messaging"
+          "Keywords": "whatsapp;chat;messaging",
+          "StartupWMClass": "whatsapp-desktop"
         }
       }
     },
