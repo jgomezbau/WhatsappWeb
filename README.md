@@ -121,6 +121,10 @@ El paquete `.deb` integra la aplicación en el sistema automáticamente:
 
 No hace falta crear un `.desktop` manualmente al instalar el `.deb`.
 
+> En distribuciones basadas en Debian/Ubuntu, el `.deb` también declara como dependencias:
+> `xdg-desktop-portal` y `xdg-desktop-portal-kde`.
+> Esto ayuda a que las llamadas y videollamadas funcionen correctamente en Wayland/KDE.
+
 ### AppImage
 
 Dar permisos y ejecutar:
@@ -141,6 +145,8 @@ En resumen:
 
 - **`.deb`**: instala e integra la aplicación
 - **`AppImage`**: ejecuta la aplicación sin instalarla y si no existe un .desktop lo crea automaticamente para hacerla accesible luego del menu de aplicaciones.
+
+> Nota: el `AppImage` no puede instalar dependencias del sistema como `xdg-desktop-portal`. Si usas Wayland/KDE y no detecta cámara o micrófono, instala esos paquetes manualmente.
 
 ---
 
@@ -239,6 +245,8 @@ La configuración se guarda en la carpeta de datos de usuario de la aplicación.
 **Cámara o micrófono no funcionan**
 - Verifica permisos del sistema
 - En Wayland, asegúrate de que PipeWire está funcionando
+- En KDE/Wayland con AppImage, instala `xdg-desktop-portal` y `xdg-desktop-portal-kde`
+- Si tu tarjeta de sonido está en el perfil `output:analog-stereo`, cambia a un perfil dúplex que incluya entrada (por ejemplo `output:analog-stereo+input:analog-stereo`)
 
 **Pantalla negra al iniciar**
 - Desactiva la aceleración por hardware desde Ajustes

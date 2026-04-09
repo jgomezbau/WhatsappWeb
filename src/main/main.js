@@ -23,15 +23,34 @@ const audioConfig = store.get('audioConfig');
 if (audioConfig.agc)         app.commandLine.appendSwitch('disable-audio-output-resampler');
 if (audioConfig.volumeLimit) app.commandLine.appendSwitch('disable-audio-volume-limit');
 
-const enabledFeatures = ['WebRTCPipeWireCapturer', 'VaapiVideoDecoder'];
-if (process.env.WAYLAND_DISPLAY && !process.env.ELECTRON_OZONE_PLATFORM_HINT) {
+// ── Wayland / X11 + WebRTC flags ──────────────────────────────────────────
+const isWayland = !!process.env.WAYLAND_DISPLAY;
+
+if (isWayland) {
   app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-  enabledFeatures.push('WaylandWindowDecorations');
+  app.commandLine.appendSwitch('enable-features', [
+    'WebRTCPipeWireCapturer',
+    'PipeWireCamera',
+    'WaylandWindowDecorations',
+    'VaapiVideoDecodeLinux',
+    'VaapiVideoDecoder'
+  ].join(','));
+  // Habilita captura de cámara/micro vía PipeWire portal en Wayland
+  app.commandLine.appendSwitch('enable-webrtc-pipewire-capturer');
+} else {
+  app.commandLine.appendSwitch('enable-features', [
+    'WebRTCPipeWireCapturer',
+    'VaapiVideoDecoder'
+  ].join(','));
 }
-app.commandLine.appendSwitch('enable-features', enabledFeatures.join(','));
+
 app.commandLine.appendSwitch('enable-webrtc-hide-local-ips-with-mdns', 'false');
+// ─────────────────────────────────────────────────────────────────────────
 
 app.setName('WhatsApp');
+
+// Evita que aparezca como org.chromium.Chromium en el monitor de tareas
+app.setDesktopName('whatsapp-desktop.desktop');
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -61,7 +80,7 @@ function ensureAppImageDesktopEntry() {
   const iconCandidates = [
     path.join(process.resourcesPath || '', 'icons', 'icon.png'),
     path.join(process.resourcesPath || '', 'resources', 'icons', 'icon.png'),
-    path.join(__dirname, '../../resources/icons/icon.png')
+    path.join(__dirname, '../../icons/icon.png')
   ];
 
   const sourceIconPath = iconCandidates.find(candidate => fs.existsSync(candidate));
@@ -109,7 +128,6 @@ StartupWMClass=whatsapp-desktop
   } catch {}
 }
 
-// ── Inyectar shortcut de WhatsApp Web en la página ───────────────────────
 function injectWA (shortcut) {
   if (!wm?.win) return;
   wm.win.webContents.focus();
@@ -426,7 +444,6 @@ app.whenReady().then(async () => {
   ]);
 
   Menu.setApplicationMenu(menu);
-
   wm.win.setMenuBarVisibility(false);
   wm.win.setAutoHideMenuBar(true);
 

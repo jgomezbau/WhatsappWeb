@@ -6,21 +6,25 @@ const {
 const path = require('path');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
-const USER_AGENT =
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+// UA dinámico: usa la versión real de Chromium que trae Electron
+// y elimina la referencia a Electron para evitar detección
+let USER_AGENT = '';
 
 class WindowManager {
-  /** @param {import('./store').Store} store */
   constructor (store) {
     this.store  = store;
     this.win    = null;
     this._findBarVisible = false;
   }
 
-  // ─── Creation ────────────────────────────────────────────────────────────
-
   async create () {
+    // Construir UA con la versión real de Chromium
+    const chromeVersion = process.versions.chrome ?? '142.0.0.0';
+    USER_AGENT =
+      `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ` +
+      `(KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+
     const bounds = this.store.get('windowBounds');
 
     this.win = new BrowserWindow({
@@ -62,8 +66,6 @@ class WindowManager {
     return this.win;
   }
 
-  // ─── Session & permissions ────────────────────────────────────────────────
-
   _configureSession () {
     const ses = session.defaultSession;
 
@@ -73,16 +75,27 @@ class WindowManager {
     });
 
     const ALLOWED = new Set([
-      'media', 'mediaKeySystem', 'geolocation',
+      'media', 'camera', 'microphone', 'mediaKeySystem', 'geolocation',
       'notifications', 'fullscreen', 'pointerLock',
       'clipboard-sanitized-write',
       'persistent-storage'
     ]);
-    ses.setPermissionRequestHandler((_wc, permission, cb) => {
-      cb(ALLOWED.has(permission));
-    });
 
-    // Forzar partición persistente — WhatsApp lo requiere para llamadas
+    const allowPermission = (_wc, permission, requestingOrigin, details) => {
+      const allowed = ALLOWED.has(permission);
+      console.debug('[PermissionCheck]', permission, requestingOrigin, details?.mediaType, 'allowed=', allowed);
+      return allowed;
+    };
+
+    const handlePermissionRequest = (_wc, permission, callback, details) => {
+      const allowed = ALLOWED.has(permission);
+      console.debug('[PermissionRequest]', permission, details?.securityOrigin || details?.requestingOrigin || '', 'allowed=', allowed);
+      callback(allowed);
+    };
+
+    ses.setPermissionCheckHandler(allowPermission);
+    ses.setPermissionRequestHandler(handlePermissionRequest);
+
     ses.flushStorageData();
 
     if (this.store.get('spellCheck')) {
@@ -93,8 +106,6 @@ class WindowManager {
       this._handleDownload(item);
     });
   }
-
-  // ─── Event listeners ─────────────────────────────────────────────────────
 
   _attachListeners () {
     const win = this.win;
@@ -113,7 +124,6 @@ class WindowManager {
 
     win.on('closed', () => { this.win = null; });
 
-    // ── Ventanas emergentes (llamadas / videollamadas) ─────────────────────
     win.webContents.setWindowOpenHandler(({ url, features }) => {
       if (url.startsWith(WHATSAPP_URL)) {
         if (features.includes('popup') || features.includes('width')) {
@@ -124,13 +134,12 @@ class WindowManager {
               height: 800,
               icon: this._iconPath('icon.png'),
               webPreferences: {
-                  preload:          path.join(__dirname, '../preload/preload.js'),
-                  nodeIntegration:  false,
-                  contextIsolation: true,
-                  sandbox:          false,
-                  spellcheck:       this.store.get('spellCheck'),
-                  webSecurity:      true,
-                  allowRunningInsecureContent: false,
+                preload:          path.join(__dirname, '../preload/preload.js'),
+                nodeIntegration:  false,
+                contextIsolation: true,
+                sandbox:          false,
+                webSecurity:      true,
+                allowRunningInsecureContent: false,
               }
             }
           };
@@ -184,8 +193,6 @@ class WindowManager {
       this._buildContextMenu(params).popup();
     });
   }
-
-  // ─── Context menu ─────────────────────────────────────────────────────────
 
   _buildContextMenu (params) {
     const win = this.win;
@@ -248,8 +255,6 @@ class WindowManager {
     return Menu.buildFromTemplate(items);
   }
 
-  // ─── Download handling ────────────────────────────────────────────────────
-
   _handleDownload (item) {
     const filename = item.getFilename();
     const savePath = dialog.showSaveDialogSync(this.win, {
@@ -291,8 +296,6 @@ class WindowManager {
       console.error('[WindowManager] Error saving image:', err);
     }
   }
-
-  // ─── Find in page ─────────────────────────────────────────────────────────
 
   openFindInPage () {
     if (!this.win) return;
@@ -336,8 +339,6 @@ class WindowManager {
     `).catch(() => {});
   }
 
-  // ─── Zoom ─────────────────────────────────────────────────────────────────
-
   adjustZoom (delta) {
     if (!this.win) return;
     const current = this.win.webContents.getZoomFactor();
@@ -352,8 +353,6 @@ class WindowManager {
     this.store.set('zoom', 1.0);
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
-
   show () {
     if (!this.win) return;
     if (this.win.isMinimized()) this.win.restore();
@@ -362,10 +361,8 @@ class WindowManager {
   }
 
   toggleDevTools () { this.win?.webContents.toggleDevTools(); }
-
-  reload () { this.win?.loadURL(WHATSAPP_URL, { userAgent: USER_AGENT }); }
-
-  isVisible () { return this.win?.isVisible() ?? false; }
+  reload ()         { this.win?.loadURL(WHATSAPP_URL, { userAgent: USER_AGENT }); }
+  isVisible ()      { return this.win?.isVisible() ?? false; }
 
   _saveBounds () {
     if (!this.win || this.win.isMinimized() || this.win.isMaximized()) return;
