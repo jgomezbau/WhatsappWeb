@@ -1,16 +1,9 @@
-# Ignorar la carpeta node_modules
 /node_modules
 /dist
-package-lock.json
+/.codex
 
-# Ignorar archivos de configuración
-#config.json
-#secrets.env
-
-# Ignorar archivos temporales
-*.tmp
 *.log
+*.tmp
 
-# Ignorar archivos generados por el sistema operativo
 .DS_Store
 Thumbs.db

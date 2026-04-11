@@ -6,12 +6,12 @@
  */
 
 const { ipcMain, Notification, app, dialog, shell } = require('electron');
-const path = require('path');
+const { resolveRuntimeIconPath } = require('./assets');
 
 /**
  * @param {import('./windows').WindowManager} wm
- * @param {import('../tray').TrayManager}      tm
- * @param {import('../store').Store}           store
+ * @param {import('./tray').TrayManager} tm
+ * @param {import('./store').Store} store
  */
 function setupIPC (wm, tm, store) {
 
@@ -20,16 +20,11 @@ function setupIPC (wm, tm, store) {
     if (!store.get('notifications')) return;
     if (!Notification.isSupported())   return;
 
-    const iconPath = path.join(
-      process.resourcesPath ?? path.join(__dirname, '../../'),
-      'resources/icons/icon.png'
-    );
-
     const n = new Notification({
       title,
       body:   options.body   || '',
       silent: options.silent || false,
-      icon:   iconPath
+      icon:   resolveRuntimeIconPath('icon.png')
     });
 
     n.on('click', () => wm.show());

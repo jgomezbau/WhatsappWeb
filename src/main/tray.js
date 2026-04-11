@@ -1,11 +1,11 @@
 'use strict';
 
 const { Tray, Menu, nativeImage, app } = require('electron');
-const path = require('path');
+const { APP_NAME, resolveRuntimeIconPath } = require('./assets');
 
 class TrayManager {
   /**
-   * @param {import('./main/windows').WindowManager} windowManager
+   * @param {import('./windows').WindowManager} windowManager
    * @param {import('./store').Store} store
    */
   constructor (windowManager, store) {
@@ -19,7 +19,7 @@ class TrayManager {
     if (this.tray) return;
 
     this.tray = new Tray(this._icon(false));
-    this.tray.setToolTip('WhatsApp');
+    this.tray.setToolTip(APP_NAME);
     this._rebuildMenu();
 
     // Single-click → toggle window (works on most DE)
@@ -112,15 +112,7 @@ class TrayManager {
 
   _iconPath (hasUnread) {
     const filename = hasUnread ? 'icon-unread.png' : 'icon.png';
-    const fs = require('fs');
-
-    const devPath  = path.join(__dirname, '../../icons', filename);
-    if (fs.existsSync(devPath)) return devPath;
-
-    const prodPath = path.join(process.resourcesPath, 'icons', filename);
-    if (fs.existsSync(prodPath)) return prodPath;
-
-    return null; // ← ninguno existe, usar fallback
+    return resolveRuntimeIconPath(filename);
   }
 
   _icon (hasUnread) {

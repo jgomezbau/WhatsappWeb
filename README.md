@@ -1,69 +1,59 @@
-# WhatsApp Desktop para Linux
+# WhatsApp Desktop Linux
 
-**Versión 3.0.0** · Cliente no oficial basado en Electron
+Unofficial WhatsApp desktop wrapper for Linux, built with Electron and packaged for native distribution.
 
-Cliente no oficial de WhatsApp Web para Linux, con soporte para notificaciones, icono en el tray, menú de aplicación completo y empaquetado en `.deb` y `AppImage`.
+It provides a dedicated desktop window for WhatsApp Web with Linux-friendly packaging, tray integration, native notifications, persistent settings, and a small set of quality-of-life desktop features.
 
----
+## Disclaimer
 
-## Características
+This project is unofficial and is not affiliated with, endorsed by, or sponsored by WhatsApp or Meta.
 
-| Característica | Descripción |
-|---|---|
-| 📞 Llamadas y videollamadas | Disponibles a través de WhatsApp Web Beta |
-| 🔔 Notificaciones nativas | Integradas con el sistema |
-| 🖥️ Icono en el tray | Oculta al tray al cerrar, con menú contextual |
-| 📋 Menú de aplicación | Chats, Llamadas, Editar, Vista, Ventana, Ajustes y Ayuda |
-| 🔍 Buscar en página | `Ctrl+F` abre una barra de búsqueda integrada |
-| 🔎 Zoom ajustable | `Ctrl++` / `Ctrl+-` / `Ctrl+0` |
-| 📥 Gestor de descargas | Selector de destino y barra de progreso |
-| ✅ Corrector ortográfico | Integrado con sugerencias en el menú contextual |
-| 🔄 Auto-actualización | `electron-updater` vía GitHub Releases |
-| 💤 Reconexión al despertar | Recarga automática al salir de suspensión |
-| 🔒 Seguridad | `webSecurity: true`, sin `nodeIntegration`, `contextIsolation` activo |
-| ⚙️ Configuración persistente | Todos los ajustes se guardan automáticamente entre sesiones |
+WhatsApp and its related names, marks, and logos are trademarks of their respective owners. This repository only packages the web client experience into a Linux desktop wrapper and does not claim ownership of the WhatsApp service or brand.
 
----
+## Features
 
-## Estructura del proyecto
+- Native Linux desktop app wrapper around WhatsApp Web
+- `.deb` and AppImage release artifacts
+- Tray icon with unread-state support
+- Native notifications
+- Persistent window and app settings
+- Download handling with save dialog and progress feedback
+- In-app zoom controls and find-in-page support
+- Spell checking and context menu integration
+- Auto-update support via GitHub Releases for packaged builds
+- Wayland-oriented WebRTC flags for camera, microphone, and calls support
 
-```text
-whatsapp-desktop-linux/
-├── icons/
-│   ├── icon-unread.png
-│   ├── icon.ico
-│   └── icon.png
-├── resources/
-│   └── whatsapp-desktop.desktop
-├── src/
-│   ├── main/
-│   │   ├── ipc.js
-│   │   ├── main.js
-│   │   ├── store.js
-│   │   ├── tray.js
-│   │   ├── updater.js
-│   │   └── windows.js
-│   ├── preload/
-│   │   └── preload.js
-│   └── renderer/
-│       └── loading.html
-├── .gitignore
-├── package-lock.json
-├── package.json
-└── README.md
+## Screenshots
+
+Screenshots can be added here before the public release once the final visual presentation is locked in.
+
+## Requirements
+
+- Linux
+- Node.js 20 or newer
+- npm 9 or newer
+
+## Installation
+
+### AppImage
+
+```bash
+chmod +x whatsapp-desktop-linux-*.AppImage
+./whatsapp-desktop-linux-*.AppImage
 ```
 
----
+The AppImage runs without installation. On some desktop environments it may integrate automatically; on others it may need to be launched once before showing up in the application menu.
 
-## Requisitos previos
+### Debian package
 
-- **Node.js** 20 o superior
-- **npm** 9 o superior
-- Linux x64 o arm64
+```bash
+sudo dpkg -i whatsapp-desktop-linux-*.deb
+sudo apt-get install -f
+```
 
----
+The Debian package installs the desktop launcher, icon metadata, and system integration entries.
 
-## Instalación y desarrollo
+## Development
 
 ```bash
 git clone https://github.com/jgomezbau/whatsapp-desktop-linux.git
@@ -72,217 +62,112 @@ npm install
 npm start
 ```
 
-Modo desarrollo con inspector del proceso principal:
+To launch Electron with the main-process inspector enabled:
 
 ```bash
 npm run dev
 ```
 
----
+## Build And Packaging
 
-## Compilar distribución
+Build all configured Linux artifacts:
 
 ```bash
 npm run build:all
 ```
 
-Solo AppImage:
+Build only AppImage:
 
 ```bash
 npm run build:appimage
 ```
 
-Solo `.deb`:
+Build only Debian package:
 
 ```bash
 npm run build:deb
 ```
 
-Los artefactos se generan en `dist/`.
+Generated artifacts are written to `dist/`.
 
----
+### Expected release artifacts
 
-## Instalación y uso
+The current release configuration is validated for Linux `x64` and produces:
 
-### Paquete `.deb`
+- `whatsapp-desktop-linux-<version>-x64.AppImage`
+- `whatsapp-desktop-linux-<version>-x64.deb`
 
-Instalación:
+## Project Structure
 
-```bash
-sudo dpkg -i dist/*.deb
+```text
+whatsapp-desktop-linux/
+├── resources/
+│   ├── icons/
+│   │   ├── icon-unread.png
+│   │   └── icon.png
+│   └── whatsapp-desktop.desktop
+├── src/
+│   ├── main/
+│   │   ├── assets.js
+│   │   ├── ipc.js
+│   │   ├── main.js
+│   │   ├── menu.js
+│   │   ├── store.js
+│   │   ├── tray.js
+│   │   ├── updater.js
+│   │   └── windows.js
+│   ├── preload/
+│   │   └── preload.js
+│   └── renderer/
+│       └── loading.html
+├── CHANGELOG.md
+├── package.json
+└── README.md
 ```
 
-El paquete `.deb` integra la aplicación en el sistema automáticamente:
+## Packaging Notes
 
-- instala la aplicación
-- registra el lanzador en el menú de aplicaciones
-- crea la entrada `.desktop`
-- deja la app accesible desde el buscador del entorno de escritorio
+- Runtime tray and notification icons are sourced from `resources/icons`.
+- The repository no longer keeps a Windows `.ico` file because the current public release scope is Linux-only and the file was not used by the build.
+- `resources/whatsapp-desktop.desktop` documents the intended desktop entry metadata for Linux packaging and AppImage integration.
+- Debian packaging includes portal and tray-related dependencies to improve desktop integration on common Linux environments.
 
-No hace falta crear un `.desktop` manualmente al instalar el `.deb`.
+## Calls And Video Calls
 
-> En distribuciones basadas en Debian/Ubuntu, el `.deb` también declara como dependencias:
-> `xdg-desktop-portal` y `xdg-desktop-portal-kde`.
-> Esto ayuda a que las llamadas y videollamadas funcionen correctamente en Wayland/KDE.
+Call support depends on WhatsApp Web capabilities and account availability. If the call buttons do not appear, check that the relevant WhatsApp Web features are enabled for your account and confirm that camera and microphone permissions are available at the OS level.
 
-### AppImage
+On Wayland-based systems, `xdg-desktop-portal` support is especially important for media-device access.
 
-Dar permisos y ejecutar:
+## Troubleshooting
 
-```bash
-chmod +x dist/*.AppImage
-./dist/*.AppImage
-```
+### Camera or microphone does not work
 
-El `AppImage` se puede ejecutar directamente sin instalación.
+- Verify system permissions for camera and microphone
+- Make sure `xdg-desktop-portal` is installed and running
+- On Wayland, confirm PipeWire is available
 
-A diferencia del paquete `.deb`, el `AppImage` es portable y normalmente no instala la aplicación en el sistema. Según el entorno de escritorio o las herramientas que tenga el usuario, puede ocurrir una de estas dos cosas:
+### The app shows a black or unstable window
 
-- que aparezca automáticamente en el menú de aplicaciones
-- que haya que crear manualmente una entrada `.desktop` o usar una herramienta de integración de AppImage
+- Disable hardware acceleration from the app settings
+- Restart the application after changing the setting
 
-En resumen:
+### The AppImage does not appear in the application menu
 
-- **`.deb`**: instala e integra la aplicación
-- **`AppImage`**: ejecuta la aplicación sin instalarla y si no existe un .desktop lo crea automaticamente para hacerla accesible luego del menu de aplicaciones.
+- Launch it once manually
+- Check whether your desktop environment supports AppImage integration automatically
 
-> Nota: el `AppImage` no puede instalar dependencias del sistema como `xdg-desktop-portal`. Si usas Wayland/KDE y no detecta cámara o micrófono, instala esos paquetes manualmente.
+### WhatsApp asks for the QR code on every launch
 
----
+- Do not remove the app's user data directory between sessions
 
-## Llamadas y videollamadas
+## Contributing
 
-Las llamadas y videollamadas funcionan a través de **WhatsApp Web Beta**.
+Issues and pull requests are welcome. When contributing:
 
-Para que aparezcan los botones de llamada en los chats individuales, debes activar la beta desde WhatsApp Web:
+- keep changes focused
+- preserve current user-facing behavior unless a fix is required
+- update documentation when packaging, assets, or release behavior changes
 
-1. Abre la aplicación
-2. Ve a **Configuración**
-3. Busca la opción de acceso o funciones beta
-4. Activa la versión **Beta** de WhatsApp Web
+## License
 
-Una vez activada, los botones de llamada de voz y videollamada deberían aparecer automáticamente en los chats compatibles. Puede requerir reiniciar la aplicacion.
-
----
-
-## Menú de aplicación
-
-La barra de menú está oculta por defecto para mantener la interfaz limpia.
-
-| Cómo acceder | Acción |
-|---|---|
-| `Alt` | Muestra la barra momentáneamente |
-| **Ventana → Fijar barra de menú** | La deja visible de forma permanente |
-
-### Secciones del menú
-
-| Sección | Contenido destacado |
-|---|---|
-| **Chats** | Nuevo chat/grupo, navegar chats, archivar, silenciar, eliminar |
-| **Llamadas** | Llamada de voz, videollamada, historial |
-| **Editar** | Copiar, pegar, deshacer, buscar |
-| **Vista** | Zoom, recargar, pantalla completa, DevTools |
-| **Ventana** | Minimizar, maximizar, ocultar al tray |
-| **Ajustes** | Tray, notificaciones, corrector, caché, carpeta de datos |
-| **Ayuda** | Atajos, enlaces útiles, reportar bugs, versión |
-
----
-
-## Atajos de teclado
-
-### Aplicación
-
-| Atajo | Acción |
-|---|---|
-| `Alt` | Mostrar / ocultar barra de menú |
-| `Ctrl+F` | Buscar en la página |
-| `Ctrl++` / `Ctrl+=` | Aumentar zoom |
-| `Ctrl+-` | Reducir zoom |
-| `Ctrl+0` | Restablecer zoom |
-| `Ctrl+R` / `F5` | Recargar WhatsApp |
-| `Ctrl+Q` | Salir de la aplicación |
-| `F11` | Pantalla completa |
-| `F12` | Abrir DevTools |
-
-### WhatsApp Web
-
-| Atajo | Acción |
-|---|---|
-| `Ctrl+N` | Nuevo chat |
-| `Ctrl+Shift+N` | Nuevo grupo |
-| `Ctrl+Shift+]` | Chat siguiente |
-| `Ctrl+Shift+[` | Chat anterior |
-| `Ctrl+E` | Archivar chat |
-| `Ctrl+Shift+M` | Silenciar chat |
-| `Ctrl+Shift+U` | Marcar como no leído |
-| `Ctrl+P` | Ver perfil del contacto |
-
----
-
-## Configuración
-
-La configuración se guarda en la carpeta de datos de usuario de la aplicación.
-
-| Clave | Tipo | Descripción |
-|---|---|---|
-| `closeToTray` | boolean | Cerrar ventana y ocultar al tray |
-| `startMinimized` | boolean | Arrancar minimizado |
-| `spellCheck` | boolean | Corrector ortográfico |
-| `notifications` | boolean | Notificaciones nativas |
-| `zoom` | number | Factor de zoom |
-| `hardwareAccel` | boolean | Aceleración por hardware |
-| `audioConfig.agc` | boolean | Ajustes de audio |
-| `audioConfig.volumeLimit` | boolean | Ajustes de audio |
-
----
-
-## Solución de problemas
-
-**No aparecen las llamadas**
-- Activa la versión Beta de WhatsApp Web
-- Comprueba que estás en un chat individual compatible
-
-**Cámara o micrófono no funcionan**
-- Verifica permisos del sistema
-- En Wayland, asegúrate de que PipeWire está funcionando
-- En KDE/Wayland con AppImage, instala `xdg-desktop-portal` y `xdg-desktop-portal-kde`
-- Si tu tarjeta de sonido está en el perfil `output:analog-stereo`, cambia a un perfil dúplex que incluya entrada (por ejemplo `output:analog-stereo+input:analog-stereo`)
-
-**Pantalla negra al iniciar**
-- Desactiva la aceleración por hardware desde Ajustes
-
-**Pide QR en cada inicio**
-- No borres la carpeta de datos de usuario de la aplicación
-
-**El AppImage no aparece en el menú**
-- Ejecútalo manualmente
-- Si tu sistema no lo integra automáticamente, crea una entrada `.desktop` o usa una herramienta de integración de AppImage
-
----
-
-## Tecnologías
-
-- **Electron 39.8.5**
-- **electron-builder**
-- **electron-updater**
-- **Node.js**
-
----
-
-## Contribuciones
-
-1. Haz fork del proyecto
-2. Crea una rama para tu cambio
-3. Haz commit
-4. Sube la rama
-5. Abre un Pull Request
-
----
-
-## Descargo de responsabilidad
-
-Este proyecto no está afiliado ni avalado por WhatsApp LLC o Meta Platforms, Inc.
-
-WhatsApp® es una marca registrada de sus respectivos propietarios.
-
-Este software se distribuye bajo la licencia MIT.
+This project is licensed under the MIT License.

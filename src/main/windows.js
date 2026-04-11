@@ -4,6 +4,7 @@ const {
   BrowserWindow, Menu, session, shell, Notification, app, dialog
 } = require('electron');
 const path = require('path');
+const { APP_NAME, resolveRuntimeIconPath } = require('./assets');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
 
@@ -36,7 +37,7 @@ class WindowManager {
       minHeight: 600,
       icon: this._iconPath('icon.png'),
       show: false,
-      title: 'WhatsApp',
+      title: APP_NAME,
       backgroundColor: '#111b21',
       webPreferences: {
         preload:          path.join(__dirname, '../preload/preload.js'),
@@ -370,9 +371,7 @@ class WindowManager {
   }
 
   _iconPath (filename) {
-    const devPath  = path.join(__dirname, '../../icons', filename);
-    const prodPath = path.join(process.resourcesPath ?? '', 'icons', filename);
-    return require('fs').existsSync(devPath) ? devPath : prodPath;
+    return resolveRuntimeIconPath(filename);
   }
 
   _notify (title, body) {

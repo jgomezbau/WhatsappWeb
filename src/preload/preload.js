@@ -1,8 +1,7 @@
 'use strict';
-const { ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
-// ── API para la página (sin contextBridge) ────────────────────────────────
-window.electronAPI = {
+const electronAPI = {
   getVersion:     () => ipcRenderer.invoke('app:version'),
   getPlatform:    () => ipcRenderer.invoke('app:platform'),
   getSettings:    () => ipcRenderer.invoke('settings:get'),
@@ -17,6 +16,8 @@ window.electronAPI = {
   onProtocolUrl:  (cb) => ipcRenderer.on('protocol-url', (_e, url) => cb(url)),
   openExternal:   (url) => ipcRenderer.send('open-external', url)
 };
+
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
 // ── Notificaciones ────────────────────────────────────────────────────────
 const NativeNotification = window.Notification;

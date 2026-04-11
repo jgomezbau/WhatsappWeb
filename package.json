@@ -1,9 +1,28 @@
 {
   "name": "whatsapp-desktop",
   "version": "3.0.0",
-  "description": "WhatsApp Desktop para Linux - Cliente moderno no oficial",
+  "description": "Unofficial WhatsApp desktop wrapper for Linux built with Electron",
   "author": "Juan Bau <jgomezbau@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/jgomezbau/whatsapp-desktop-linux#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgomezbau/whatsapp-desktop-linux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jgomezbau/whatsapp-desktop-linux/issues"
+  },
+  "keywords": [
+    "electron",
+    "linux",
+    "whatsapp",
+    "desktop",
+    "appimage",
+    "deb"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -17,7 +36,7 @@
   "build": {
     "appId": "com.whatsapp.desktop.linux",
     "productName": "WhatsApp",
-    "copyright": "Copyright © 2025 Juan Bau",
+    "copyright": "Copyright © 2026 Juan Bau",
     "directories": {
       "output": "dist",
       "buildResources": "resources"
@@ -28,26 +47,26 @@
     ],
     "extraResources": [
       {
-        "from": "icons",
+        "from": "resources/icons",
         "to": "icons",
         "filter": ["**/*"]
       }
     ],
     "linux": {
       "target": [
-        { "target": "AppImage", "arch": ["x64", "arm64"] },
+        { "target": "AppImage", "arch": ["x64"] },
         { "target": "deb", "arch": ["x64"] }
       ],
-      "icon": "icons",
+      "icon": "resources/icons",
       "category": "Network;Chat;InstantMessaging",
       "maintainer": "Juan Bau",
       "executableName": "whatsapp-desktop",
-      "synopsis": "Cliente no oficial de WhatsApp con videollamadas para Linux",
-      "artifactName": "WhatsApp-Desktop-${version}-${arch}.${ext}",
+      "synopsis": "Unofficial WhatsApp desktop wrapper for Linux",
+      "artifactName": "whatsapp-desktop-linux-${version}-${arch}.${ext}",
       "desktop": {
         "entry": {
           "Name": "WhatsApp",
-          "Comment": "Cliente no oficial de WhatsApp para Linux",
+          "Comment": "Unofficial WhatsApp desktop wrapper for Linux",
           "Keywords": "whatsapp;chat;messaging",
           "StartupWMClass": "whatsapp-desktop"
         }
@@ -55,12 +74,12 @@
     },
     "deb": {
       "depends": [
+        "libayatana-appindicator3-1 | libappindicator3-1",
         "libnotify4",
         "libxtst6",
         "libnss3",
         "libsecret-1-0",
-        "xdg-desktop-portal",
-        "xdg-desktop-portal-kde"
+        "xdg-desktop-portal"
       ]
     },
     "protocols": [

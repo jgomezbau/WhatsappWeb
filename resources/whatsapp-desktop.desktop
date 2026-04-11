@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=WhatsApp
-Comment=Aplicación de escritorio para WhatsApp con soporte para videollamadas
+Comment=Unofficial WhatsApp desktop wrapper for Linux
 Exec=whatsapp-desktop %U
 Icon=whatsapp-desktop
 Terminal=false
