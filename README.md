@@ -145,6 +145,7 @@ On Wayland-based systems, `xdg-desktop-portal` support is especially important f
 - Verify system permissions for camera and microphone
 - Make sure `xdg-desktop-portal` is installed and running
 - On Wayland, confirm PipeWire is available
+- Restart the app completely after changing portal or device permissions
 
 ### The app shows a black or unstable window
 

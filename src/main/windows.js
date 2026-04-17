@@ -7,6 +7,12 @@ const path = require('path');
 const { APP_NAME, resolveRuntimeIconPath } = require('./assets');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com';
+const TRUSTED_PERMISSION_ORIGINS = new Set([
+  WHATSAPP_URL,
+  'https://whatsapp.com',
+  'https://www.whatsapp.com',
+  'https://static.whatsapp.net'
+]);
 
 // UA dinámico: usa la versión real de Chromium que trae Electron
 // y elimina la referencia a Electron para evitar detección
@@ -83,15 +89,91 @@ class WindowManager {
       'persistent-storage'
     ]);
 
+    const SENSITIVE_PERMISSIONS = new Set([
+      'media', 'camera', 'microphone', 'geolocation'
+    ]);
+
+    const extractOrigin = (rawOrigin) => {
+      if (!rawOrigin) return '';
+      if (rawOrigin === 'file://') return rawOrigin;
+
+      try {
+        return new URL(rawOrigin).origin;
+      } catch {
+        return '';
+      }
+    };
+
+    const isTrustedPermissionOrigin = (rawOrigin) => {
+      const origin = extractOrigin(rawOrigin);
+      if (!origin) return false;
+      if (origin === 'file://') return true;
+      if (TRUSTED_PERMISSION_ORIGINS.has(origin)) return true;
+
+      try {
+        const { hostname, protocol } = new URL(origin);
+        return protocol === 'https:' && (
+          hostname === 'whatsapp.com' ||
+          hostname.endsWith('.whatsapp.com') ||
+          hostname.endsWith('.whatsapp.net')
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const isAllowedMediaRequest = (permission, details) => {
+      if (!['media', 'camera', 'microphone'].includes(permission)) return false;
+
+      const mediaTypes = Array.isArray(details?.mediaTypes)
+        ? details.mediaTypes
+        : [details?.mediaType].filter(Boolean);
+
+      if (!mediaTypes.length) return true;
+
+      return mediaTypes.some((mediaType) => mediaType === 'audio' || mediaType === 'video');
+    };
+
     const allowPermission = (_wc, permission, requestingOrigin, details) => {
-      const allowed = ALLOWED.has(permission);
-      console.debug('[PermissionCheck]', permission, requestingOrigin, details?.mediaType, 'allowed=', allowed);
+      const trustedOrigin = isTrustedPermissionOrigin(requestingOrigin);
+      const allowedByPermission = ALLOWED.has(permission);
+      const allowedByOrigin = !SENSITIVE_PERMISSIONS.has(permission) || trustedOrigin;
+      const allowedByMediaType = !['media', 'camera', 'microphone'].includes(permission) ||
+        isAllowedMediaRequest(permission, details);
+      const allowed = allowedByPermission && allowedByOrigin && allowedByMediaType;
+
+      console.debug(
+        '[PermissionCheck]',
+        permission,
+        requestingOrigin,
+        details?.mediaTypes || details?.mediaType,
+        'trustedOrigin=',
+        trustedOrigin,
+        'allowed=',
+        allowed
+      );
       return allowed;
     };
 
     const handlePermissionRequest = (_wc, permission, callback, details) => {
-      const allowed = ALLOWED.has(permission);
-      console.debug('[PermissionRequest]', permission, details?.securityOrigin || details?.requestingOrigin || '', 'allowed=', allowed);
+      const requestingOrigin = details?.securityOrigin || details?.requestingOrigin || '';
+      const trustedOrigin = isTrustedPermissionOrigin(requestingOrigin);
+      const allowedByPermission = ALLOWED.has(permission);
+      const allowedByOrigin = !SENSITIVE_PERMISSIONS.has(permission) || trustedOrigin;
+      const allowedByMediaType = !['media', 'camera', 'microphone'].includes(permission) ||
+        isAllowedMediaRequest(permission, details);
+      const allowed = allowedByPermission && allowedByOrigin && allowedByMediaType;
+
+      console.debug(
+        '[PermissionRequest]',
+        permission,
+        requestingOrigin,
+        details?.mediaTypes || details?.mediaType,
+        'trustedOrigin=',
+        trustedOrigin,
+        'allowed=',
+        allowed
+      );
       callback(allowed);
     };
 
